@@ -17,6 +17,7 @@ _testmain.go
 *.prof
 *.rar
 *.zip
+*.apk
 *.gz
 *.psd
 *.bmd
