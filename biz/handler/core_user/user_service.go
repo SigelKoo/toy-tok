@@ -16,16 +16,21 @@ const (
 )
 
 var (
-	successCode     = int32(0)
-	successMsg      = "register user success"
-	bindFailedCode  = int32(1)
-	bindFailedMsg   = "request bind and validate failed"
-	gormFailedCode  = int32(2)
-	gormFailedMsg   = "gorm create user failed"
-	tokenFailedCode = int32(3)
-	tokenFailedMsg  = "jwt create token failed"
-	failedToken     = ""
-	failedUserID    = int64(0)
+	successCode          = int32(0)
+	registerSuccessMsg   = "register user success"
+	loginSuccessMsg      = "user login success"
+	bindFailedCode       = int32(1)
+	bindFailedMsg        = "request bind and validate failed"
+	gormCreateFailedCode = int32(2)
+	gormCreateFailedMsg  = "gorm create user failed"
+	tokenFailedCode      = int32(3)
+	tokenFailedMsg       = "jwt create token failed"
+	passwordFailedCode   = int32(4)
+	passwordFailedMsg    = "user password error"
+	gormFindFailedCode   = int32(5)
+	gormFindFailedMsg    = "gorm find user failed"
+	failedToken          = ""
+	failedUserID         = int64(0)
 )
 
 func UserRegister(ctx context.Context, c *app.RequestContext) {
@@ -34,41 +39,104 @@ func UserRegister(ctx context.Context, c *app.RequestContext) {
 	err = c.BindAndValidate(&req)
 	if err != nil {
 		_ = c.Error(errors.WithStack(err))
-		c.JSON(failedServerCode, &core_user.ToytokUserRegisterResponse{
+		failedResp := &core_user.ToytokUserRegisterResponse{
 			StatusCode: &bindFailedCode,
 			StatusMsg:  &bindFailedMsg,
 			UserId:     &failedUserID,
 			Token:      &failedToken,
-		})
+		}
+		c.JSON(failedServerCode, failedResp.String())
 		return
 	}
 	userID, err := mysql.CreateUser(ctx, *req.Username, *req.Password)
 	if err != nil {
 		_ = c.Error(errors.WithStack(err))
-		c.JSON(failedServerCode, &core_user.ToytokUserRegisterResponse{
-			StatusCode: &gormFailedCode,
-			StatusMsg:  &gormFailedMsg,
+		failedResp := &core_user.ToytokUserRegisterResponse{
+			StatusCode: &gormCreateFailedCode,
+			StatusMsg:  &gormCreateFailedMsg,
 			UserId:     &failedUserID,
 			Token:      &failedToken,
-		})
+		}
+		c.JSON(failedServerCode, failedResp.String())
 		return
 	}
 	token, err := util.CreateAccessToken(userID)
 	if err != nil {
 		_ = c.Error(errors.WithStack(err))
-		c.JSON(failedServerCode, &core_user.ToytokUserRegisterResponse{
+		failedResp := &core_user.ToytokUserRegisterResponse{
 			StatusCode: &tokenFailedCode,
 			StatusMsg:  &tokenFailedMsg,
 			UserId:     &failedUserID,
 			Token:      &failedToken,
-		})
+		}
+		c.JSON(failedServerCode, failedResp.String())
 		return
 	}
-	resp := &core_user.ToytokUserRegisterResponse{
+	successResp := &core_user.ToytokUserRegisterResponse{
 		StatusCode: &successCode,
-		StatusMsg:  &successMsg,
+		StatusMsg:  &registerSuccessMsg,
 		UserId:     &userID,
 		Token:      &token,
 	}
-	c.JSON(successHTTPCode, resp)
+	c.JSON(successHTTPCode, successResp.String())
+	return
+}
+
+func UserLogin(ctx context.Context, c *app.RequestContext) {
+	var err error
+	var req core_user.ToytokUserLoginRequest
+	err = c.BindAndValidate(&req)
+	if err != nil {
+		_ = c.Error(errors.WithStack(err))
+		failedResp := &core_user.ToytokUserRegisterResponse{
+			StatusCode: &bindFailedCode,
+			StatusMsg:  &bindFailedMsg,
+			UserId:     &failedUserID,
+			Token:      &failedToken,
+		}
+		c.JSON(failedServerCode, failedResp.String())
+		return
+	}
+	userID, err := mysql.FindUserPasswordIsCorrect(ctx, *req.Username, *req.Password)
+	if err != nil {
+		_ = c.Error(errors.WithStack(err))
+		failedResp := &core_user.ToytokUserRegisterResponse{
+			StatusCode: &gormFindFailedCode,
+			StatusMsg:  &gormFindFailedMsg,
+			UserId:     &failedUserID,
+			Token:      &failedToken,
+		}
+		c.JSON(failedServerCode, failedResp.String())
+		return
+	}
+	if userID == 0 {
+		failedResp := &core_user.ToytokUserLoginResponse{
+			StatusCode: &passwordFailedCode,
+			StatusMsg:  &passwordFailedMsg,
+			UserId:     &failedUserID,
+			Token:      &failedToken,
+		}
+		c.JSON(successHTTPCode, failedResp.String())
+		return
+	}
+	token, err := util.CreateAccessToken(userID)
+	if err != nil {
+		_ = c.Error(errors.WithStack(err))
+		failedResp := &core_user.ToytokUserRegisterResponse{
+			StatusCode: &tokenFailedCode,
+			StatusMsg:  &tokenFailedMsg,
+			UserId:     &failedUserID,
+			Token:      &failedToken,
+		}
+		c.JSON(failedServerCode, failedResp.String())
+		return
+	}
+	successResp := &core_user.ToytokUserLoginResponse{
+		StatusCode: &successCode,
+		StatusMsg:  &loginSuccessMsg,
+		UserId:     &userID,
+		Token:      &token,
+	}
+	c.JSON(successHTTPCode, successResp.String())
+	return
 }

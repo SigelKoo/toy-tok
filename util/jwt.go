@@ -23,8 +23,8 @@ func CreateAccessToken(userID int64) (string, error) {
 			Issuer:    "toytok-app",
 		},
 	}
-	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
-	signedString, err := tokenClaims.SignedString(jwtSecret)
+	tokenClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signedString, err := tokenClaims.SignedString([]byte(jwtSecret))
 	if err != nil {
 		return "", err
 	}

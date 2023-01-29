@@ -3,13 +3,16 @@
 package main
 
 import (
-	"github.com/cloudwego/hertz/pkg/app/server"
 	handler "toy-tok/biz/handler"
+	"toy-tok/biz/handler/core_user"
+
+	"github.com/cloudwego/hertz/pkg/app/server"
 )
 
 // customizeRegister registers customize routers.
 func customizedRegister(r *server.Hertz) {
 	r.GET("/ping", handler.Ping)
-
+	r.POST("/douyin/user/register/", core_user.UserRegister)
+	r.POST("/douyin/user/login/", core_user.UserLogin)
 	// your code ...
 }
